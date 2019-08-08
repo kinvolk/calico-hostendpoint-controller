@@ -1,0 +1,11 @@
+---
+apiVersion: crd.projectcalico.org/v1
+kind: HostEndpoint
+metadata:
+  name: %NODE_NAME%-%IFACE_NAME%
+  labels:
+    host-endpoint: ingress
+    nodetype: worker
+spec:
+  interfaceName: %IFACE_NAME%
+  node: "%NODE_NAME%"

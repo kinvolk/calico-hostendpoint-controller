@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+set -e
+
+# This scripts reads the following env vars:
+#
+# DRY_RUN - echo the apply/delete commands instead of running them
+# RESYNC_ITERS - force a full sync after this number of iterations
+#
+# Default values are used if not provided
+
+if [ -z "$DRY_RUN" ]; then
+	DRY_RUN=0
+fi
+if [ -z "$RESYNC_ITERS" ]; then
+	RESYNC_ITERS=100
+fi
+
+run=
+[ $DRY_RUN -eq 1 ] &&
+        run=echo
+
+nodes_list_new="/tmp//nodes-list.new"
+nodes_list_old="/tmp//nodes-list.old"
+
+function get_workers_names() {
+	# XXX: Do NOT use $run here, as the nodes names will be this string and
+	# is very confusing for debugging
+
+	# TODO: simplify this command, make sure each node name is in a new line
+	#kubectl get nodes -l node-role.kubernetes.io/node -o jsonpath="{.items[*].metadata.name}"
+	kubectl get nodes -l node-role.kubernetes.io/node -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}'
+}
+
+function create_endpoint_yaml() {
+	local node_name=$1
+	local iface_name=$2
+	local tmp_dir="/tmp/nodes-yamls/"
+
+	# This only works if the node name is a valid file name, but this is the
+	# case in Lokomotive
+	local node_yaml="${tmp_dir}/${node_name}"
+
+	mkdir -p $tmp_dir
+
+	cp ./worker-host-endpoint.yaml.tmpl ${node_yaml}
+	sed -i -e "s,%NODE_NAME%,$node_name," ${node_yaml}
+	sed -i -e "s,%IFACE_NAME%,$iface_name," ${node_yaml}
+
+	echo $node_yaml
+}
+
+echo "Starting"
+iters_nr=0
+touch $nodes_list_old $nodes_list_old
+while true; do
+	get_workers_names | sort > $nodes_list_new
+
+	# This commands may seem weird, but are rather trivial:
+	# comm -13 outputs what is unique to the second file, i.e new nodes
+	# comm -23 outputs what is unique to the first file, i.e. deleted nodes
+	new_nodes=$(comm -13 $nodes_list_old $nodes_list_new)
+	deleted_nodes=$(comm -23 $nodes_list_old $nodes_list_new)
+
+	for node_name in $new_nodes; do
+		echo "Creating endpoint for $node_name"
+		node_yaml=$(create_endpoint_yaml $node_name bond0)
+		printf '\t'
+		$run kubectl apply -f $node_yaml
+	done
+
+	for node_name in $deleted_nodes; do
+		echo "Deleting endpoint for $node_name"
+		node_yaml=$(create_endpoint_yaml $node_name bond0)
+		printf '\t'
+		$run kubectl delete -f $node_yaml
+	done
+
+	# Wait some time to not do a busy loop
+	# Let's wait until watching reports a change
+	echo "Waiting for node watch"
+	$run kubectl get nodes --watch-only | head -n 1 > /dev/null
+
+	mv -f $nodes_list_new $nodes_list_old
+
+	# Empty the old file every few iters to force a full-sync
+	iters_nr=$(($iters_nr+1))
+	if [ $iters_nr -eq "$RESYNC_ITERS" ]; then
+		echo "Forcing full sync"
+		iters_nr=0
+		echo "" > $nodes_list_old
+	fi
+done
