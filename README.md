@@ -1,4 +1,4 @@
-This is a few minutes hack to manage calico hostendpoint controllers when nodes
+This is a few minutes hack to manage calico hostendpoint resources when nodes
 are added or deleted.
 
 Please note that the code is messy, names were not carefully chosen, directories
