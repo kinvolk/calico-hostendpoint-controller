@@ -22,6 +22,8 @@ run=
 nodes_list_new="/tmp//nodes-list.new"
 nodes_list_old="/tmp//nodes-list.old"
 
+function indent() { sed 's/^/\t/'; }
+
 function get_workers_names() {
 	# XXX: Do NOT use $run here, as the nodes names will be this string and
 	# is very confusing for debugging
@@ -64,15 +66,13 @@ while true; do
 	for node_name in $new_nodes; do
 		echo "Creating endpoint for $node_name"
 		node_yaml=$(create_endpoint_yaml $node_name bond0)
-		printf '\t'
-		$run kubectl apply -f $node_yaml
+		$run kubectl apply -f $node_yaml | indent
 	done
 
 	for node_name in $deleted_nodes; do
 		echo "Deleting endpoint for $node_name"
 		node_yaml=$(create_endpoint_yaml $node_name bond0)
-		printf '\t'
-		$run kubectl delete -f $node_yaml
+		$run kubectl delete -f $node_yaml | indent
 	done
 
 	# Wait some time to not do a busy loop
