@@ -2,21 +2,21 @@
 apiVersion: crd.projectcalico.org/v1
 kind: HostEndpoint
 metadata:
-  name: %NODE_NAME%-%EXTERNAL_IFACE_NAME%
+  name: %NODE_NAME%-%VPN_IFACE1_NAME%
   labels:
-    host-endpoint: ingress
+    host-endpoint: vpn
     nodetype: worker
 spec:
-  interfaceName: %EXTERNAL_IFACE_NAME%
+  interfaceName: %VPN_IFACE1_NAME%
   node: "%NODE_NAME%"
 ---
 apiVersion: crd.projectcalico.org/v1
 kind: HostEndpoint
 metadata:
-  name: %NODE_NAME%-%TUNL_IFACE_NAME%
+  name: %NODE_NAME%-%VPN_IFACE2_NAME%
   labels:
-    host-endpoint: tunl
+    host-endpoint: vpn
     nodetype: worker
 spec:
-  interfaceName: %TUNL_IFACE_NAME%
+  interfaceName: %VPN_IFACE2_NAME%
   node: "%NODE_NAME%"
