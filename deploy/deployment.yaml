@@ -24,7 +24,7 @@ spec:
     spec:
       serviceAccountName: calico-host-endpoint-controller
       containers:
-      - image: rodrigocampos/calico-endpoint-controller:v0.1-test6
+      - image: quay.io/kinvolk/calico-endpoint-controller:v0.0.1
         name: calico-endpoint-controller
         volumeMounts:
         - mountPath: /tmp/
