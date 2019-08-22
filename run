@@ -22,6 +22,8 @@ run=
 nodes_list_new="/tmp//nodes-list.new"
 nodes_list_old="/tmp//nodes-list.old"
 
+function indent() { sed 's/^/\t/'; }
+
 function get_workers_names() {
 	# XXX: Do NOT use $run here, as the nodes names will be this string and
 	# is very confusing for debugging
@@ -33,7 +35,8 @@ function get_workers_names() {
 
 function create_endpoint_yaml() {
 	local node_name=$1
-	local iface_name=$2
+	local external_iface_name=$2
+	local tunl_iface_name=$3
 	local tmp_dir="/tmp/nodes-yamls/"
 
 	# This only works if the node name is a valid file name, but this is the
@@ -44,9 +47,38 @@ function create_endpoint_yaml() {
 
 	cp ./worker-host-endpoint.yaml.tmpl ${node_yaml}
 	sed -i -e "s,%NODE_NAME%,$node_name," ${node_yaml}
-	sed -i -e "s,%IFACE_NAME%,$iface_name," ${node_yaml}
+	sed -i -e "s,%EXTERNAL_IFACE_NAME%,$external_iface_name," ${node_yaml}
+	sed -i -e "s,%TUNL_IFACE_NAME%,$tunl_iface_name," ${node_yaml}
 
 	echo $node_yaml
+}
+
+function maybe_create_vpn_endpoint_yaml() {
+	local node_name=$1
+	local vpn_iface1_name=$2
+	local vpn_iface2_name=$3
+
+	local tmp_dir="/tmp/nodes-vpn-yamls/"
+
+	local node_type=$(kubectl get node ${node_name} -o jsonpath="{.metadata.labels.nodetype}")
+
+	if [ "$node_type" != "vpn" ]; then
+		echo ""
+		return
+	fi
+
+	# This only works if the node name is a valid file name, but this is the
+	# case in Lokomotive
+	local node_vpn_yaml="${tmp_dir}/${node_name}"
+
+	mkdir -p $tmp_dir
+
+	cp ./vpn-host-endpoint.yaml.tmpl ${node_vpn_yaml}
+	sed -i -e "s,%NODE_NAME%,$node_name," ${node_vpn_yaml}
+	sed -i -e "s,%VPN_IFACE1_NAME%,$vpn_iface1_name," ${node_vpn_yaml}
+	sed -i -e "s,%VPN_IFACE2_NAME%,$vpn_iface2_name," ${node_vpn_yaml}
+
+	echo $node_vpn_yaml
 }
 
 echo "Starting"
@@ -63,16 +95,27 @@ while true; do
 
 	for node_name in $new_nodes; do
 		echo "Creating endpoint for $node_name"
-		node_yaml=$(create_endpoint_yaml $node_name bond0)
-		printf '\t'
-		$run kubectl apply -f $node_yaml
+		node_yaml=$(create_endpoint_yaml $node_name bond0 tunl0)
+		$run kubectl apply -f $node_yaml | indent
+
+		node_vpn_yaml=$(maybe_create_vpn_endpoint_yaml $node_name vti1 vti2)
+		if [ -n "$node_vpn_yaml" ]; then
+			echo "Creating VPN endpoints for $node_name"
+			$run kubectl apply -f $node_vpn_yaml | indent
+
+		fi
 	done
 
 	for node_name in $deleted_nodes; do
 		echo "Deleting endpoint for $node_name"
-		node_yaml=$(create_endpoint_yaml $node_name bond0)
-		printf '\t'
-		$run kubectl delete -f $node_yaml
+		node_yaml=$(create_endpoint_yaml $node_name bond0 tunl0)
+		$run kubectl delete -f $node_yaml | indent
+
+		node_vpn_yaml=$(maybe_create_vpn_endpoint_yaml $node_name vti1 vti2)
+		if [ -n "$node_vpn_yaml" ]; then
+			echo "Deleting VPN endpoints for $node_name"
+			$run kubectl delete -f $node_vpn_yaml | indent
+		fi
 	done
 
 	# Wait some time to not do a busy loop

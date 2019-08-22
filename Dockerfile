@@ -12,6 +12,7 @@ WORKDIR /app
 ADD https://storage.googleapis.com/kubernetes-release/release/v1.14.3/bin/linux/amd64/kubectl /usr/local/bin
 
 ADD run worker-host-endpoint.yaml.tmpl /app/
+ADD run vpn-host-endpoint.yaml.tmpl /app/
 
 RUN chmod +x /usr/local/bin/kubectl
 RUN chmod +x /app/run
