@@ -8,3 +8,21 @@ Packet specific (the script uses "bond0" as the interface name).
 Also, another important consideration is that since a node start till the policy
 is applied, the node should not be exposed. This is not covered by this
 controller.
+
+Building
+========
+
+Depending on your architecture you would use one of the commands:
+
+```
+ARCH=amd64 docker build -t kinvolk/calico-hostendpoint-controller:v0.0.2-amd64 --build-arg ARCH . && docker push kinvolk/calico-hostendpoint-controller:v0.0.2-amd64
+ARCH=arm64 docker build -t kinvolk/calico-hostendpoint-controller:v0.0.2-arm64 --build-arg ARCH . && docker push kinvolk/calico-hostendpoint-controller:v0.0.2-arm64
+```
+
+When all images are build on the respective architectures and published they can be combined through a manifest:
+```
+docker manifest create kinvolk/calico-hostendpoint-controller:v0.0.2 --amend kinvolk/calico-hostendpoint-controller:v0.0.2-amd64 --amend kinvolk/calico-hostendpoint-controller:v0.0.2-arm64
+docker manifest annotate kinvolk/calico-hostendpoint-controller:v0.0.2 kinvolk/calico-hostendpoint-controller:v0.0.2-amd64 --arch=amd64 --os=linux
+docker manifest annotate kinvolk/calico-hostendpoint-controller:v0.0.2 kinvolk/calico-hostendpoint-controller:v0.0.2-arm64 --arch=arm64 --os=linux
+docker manifest push kinvolk/calico-hostendpoint-controller:v0.0.2
+```
