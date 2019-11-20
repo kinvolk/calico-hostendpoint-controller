@@ -19,6 +19,8 @@ ARCH=amd64 docker build -t kinvolk/calico-hostendpoint-controller:v0.0.2-amd64 -
 ARCH=arm64 docker build -t kinvolk/calico-hostendpoint-controller:v0.0.2-arm64 --build-arg ARCH . && docker push kinvolk/calico-hostendpoint-controller:v0.0.2-arm64
 ```
 
+Now make sure you have `"experimental": "enabled"` in your `~/.docker/config.json` (surrounded by `{` and `}` if the file is otherwise empty).
+
 When all images are build on the respective architectures and published they can be combined through a manifest:
 ```
 docker manifest create kinvolk/calico-hostendpoint-controller:v0.0.2 --amend kinvolk/calico-hostendpoint-controller:v0.0.2-amd64 --amend kinvolk/calico-hostendpoint-controller:v0.0.2-arm64
