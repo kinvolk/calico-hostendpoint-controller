@@ -30,7 +30,7 @@ function get_workers_names() {
 
 	# TODO: simplify this command, make sure each node name is in a new line
 	#kubectl get nodes -l node-role.kubernetes.io/node -o jsonpath="{.items[*].metadata.name}"
-	kubectl get nodes -l node-role.kubernetes.io/node -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}'
+	kubectl get nodes -l node.kubernetes.io/node -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}'
 }
 
 function create_endpoint_yaml() {
