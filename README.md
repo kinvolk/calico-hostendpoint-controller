@@ -19,9 +19,30 @@ ARCH=amd64 docker build -t kinvolk/calico-hostendpoint-controller:v0.0.2-amd64 -
 ARCH=arm64 docker build -t kinvolk/calico-hostendpoint-controller:v0.0.2-arm64 --build-arg ARCH . && docker push kinvolk/calico-hostendpoint-controller:v0.0.2-arm64
 ```
 
-Now make sure you have `"experimental": "enabled"` in your `~/.docker/config.json` (surrounded by `{` and `}` if the file is otherwise empty).
+There are multiple ways for building an image for another architecture which is
+not your native OS architecture.
+The most convenient one is to install the `qemu-user-static` package on your
+system to set up binary translation so that the Linux kernel can run binaries
+for other architectures.
 
-When all images are build on the respective architectures and published they can be combined through a manifest:
+>NOTE: You may have to run `sudo systemctl restart systemd-binfmt.service` after installing.
+
+The downside of this approach is that a base image for the non-native
+architecture must be explicitly specified in the `FROM` directive of the
+Dockerfile instead of an image like `debian:9`, which is a multiarch image.
+For example, for building a Debian-based ARM64 image on an x86-64 machine you
+need to use `arm64v8/debian:9` (prefixed because there is no `debian:9-arm64`).
+
+When done building, you can change the Dockerfile back to the way it was
+before. Unfortunately the `FROM` directive does not handle build arguments.
+
+Now make sure you have `"experimental": "enabled"` in your
+`~/.docker/config.json` (surrounded by `{` and `}` if the file is otherwise
+empty).
+
+When all images are built on the respective architectures and pushed they can
+be combined through a manifest to build a multiarch image:
+
 ```
 docker manifest create kinvolk/calico-hostendpoint-controller:v0.0.2 --amend kinvolk/calico-hostendpoint-controller:v0.0.2-amd64 --amend kinvolk/calico-hostendpoint-controller:v0.0.2-arm64
 docker manifest annotate kinvolk/calico-hostendpoint-controller:v0.0.2 kinvolk/calico-hostendpoint-controller:v0.0.2-amd64 --arch=amd64 --os=linux
